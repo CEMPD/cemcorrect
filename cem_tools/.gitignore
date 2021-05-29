@@ -1,0 +1,11 @@
+# Ignore Gradle project-specific cache directory
+.gradle
+
+# Ignore Gradle build output directory
+build
+
+# Ignore auto-generated VersionInfo class
+src/main/java/edu/unc/cem/util/VersionInfo.java
+
+# Ignore user-specific properties
+config/config.properties

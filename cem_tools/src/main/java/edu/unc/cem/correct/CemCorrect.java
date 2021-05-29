@@ -123,16 +123,18 @@ public class CemCorrect {
         String fs = File.separator;
         File log = new File(outputHome + fs + Constants.LOG_DIR + fs + state + "_" + Constants.LOG_FILE);
         File report = new File(outputHome + fs + Constants.LOG_DIR + fs + rptPrefix + state + rptSuffix + ".csv");
+        File sumReport = new File(outputHome + fs + Constants.LOG_DIR + fs + rptPrefix + state + rptSuffix + "_anomalies.csv");
 
         if (log.exists()) log.delete();
         if (report.exists()) report.delete();
+        if (sumReport.exists()) sumReport.delete();
 
         System.out.println("Writing:");
 
         for (int index = 0; index < files.size(); index++) {
             File input = new File(inputHome + fs + files.get(index));
             File output = new File(outputHome + fs + files.get(index));
-            writer = new CemWriter(input, output, log, report);
+            writer = new CemWriter(input, output, log, report, sumReport);
             writer.write(calculator);
             writer.close();
 

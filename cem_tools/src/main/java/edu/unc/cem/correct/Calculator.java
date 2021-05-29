@@ -31,8 +31,12 @@ public class Calculator {
     private ConcurrentHashMap<String, String> heatInputs;
     private List<ConcurrentHashMap<String, String>> lstHeatInputMonthly;
     private ConcurrentHashMap<String, String>[] heatInputsMonthly;
-    private float [] HIPercnt = new float[12];
-
+    private List<ConcurrentHashMap<String, Float>> lstHiPercntMonthly;
+    private ConcurrentHashMap<String, Float>[] hiPercntMonthly;
+    private List<ConcurrentHashMap<String, Float>> lstNoxPercntMonthly;
+    private ConcurrentHashMap<String, Float>[] noxPercntMonthly;
+    private List<ConcurrentHashMap<String, Float>> lstSo2PercntMonthly;
+    private ConcurrentHashMap<String, Float>[] so2PercntMonthly;
     private ConcurrentHashMap<String, Float> preSubNoxMTotal;
     private ConcurrentHashMap<String, Float> postSubNoxMTotal;
     private ConcurrentHashMap<String, Float> preSubSO2MTotal;
@@ -84,6 +88,22 @@ public class Calculator {
             lstHeatInputMonthly.add(new ConcurrentHashMap<String, String>());
         }
         heatInputsMonthly = (ConcurrentHashMap<String, String>[]) lstHeatInputMonthly.toArray(new ConcurrentHashMap[0]);
+
+        this.lstHiPercntMonthly = new ArrayList<ConcurrentHashMap<String, Float>>();
+        for ( int i=0; i<12; i++) {
+            this.lstHiPercntMonthly.add(new ConcurrentHashMap<String, Float>());
+        }
+        this.hiPercntMonthly = this.lstHiPercntMonthly.<ConcurrentHashMap<String, Float>>toArray((ConcurrentHashMap<String, Float>[]) new ConcurrentHashMap[0]);
+        this.lstNoxPercntMonthly = new ArrayList<ConcurrentHashMap<String, Float>>();
+        for ( int i=0; i<12; i++) {
+            this.lstNoxPercntMonthly.add(new ConcurrentHashMap<String, Float>());
+        }
+        this.noxPercntMonthly = this.lstNoxPercntMonthly.<ConcurrentHashMap<String, Float>>toArray((ConcurrentHashMap<String, Float>[]) new ConcurrentHashMap[0]);
+        this.lstSo2PercntMonthly = new ArrayList<ConcurrentHashMap<String, Float>>();
+        for ( int i=0; i<12; i++) {
+            this.lstSo2PercntMonthly.add(new ConcurrentHashMap<String, Float>());
+        }
+        this.so2PercntMonthly = this.lstSo2PercntMonthly.<ConcurrentHashMap<String, Float>>toArray((ConcurrentHashMap<String, Float>[]) new ConcurrentHashMap[0]);
 
         preSubNoxMTotal = new ConcurrentHashMap<String, Float>();
         postSubNoxMTotal = new ConcurrentHashMap<String, Float>();
@@ -144,7 +164,7 @@ public class Calculator {
                 }
 
                 // update num of days in Feb if this is a leap year
-                if ( month == 2 && day == 29) {
+                if (month == 1 && day == 29) {
                     this.numDaysInMonth[1] = 29;
                 }
 
@@ -277,7 +297,7 @@ public class Calculator {
     }
 
     private boolean isFlagged4Anomalous(String t) {
-        if (t == null || t.isEmpty()) return true;
+        if (t == null || t.isEmpty()) return false;
 
         int flag = 3;
 
@@ -287,7 +307,7 @@ public class Calculator {
             //no-op
         }
 
-        return flag > 1;
+        return (flag > 2);
     }
 
     public void calculateDayPercnt() {
@@ -298,9 +318,8 @@ public class Calculator {
                 String temp =  map.get(key);
                 String[] values = temp.split(",");
                 float numDays = Float.parseFloat(values[1]);
-                HIPercnt[i] = numDays/numDaysInMonth[i];
-                if (Constants.DEBUG)
-                    System.out.println( "Month " + i+1 + " HI percent: " + HIPercnt[i]);
+
+                this.hiPercntMonthly[i].put(key, numDays/numDaysInMonth[i]);
             }
             map = SO2Monthly[i];
             keys = map.keySet();
@@ -309,8 +328,7 @@ public class Calculator {
                 String[] values = temp.split(",");
                 float numDays = Float.parseFloat(values[1]);
                 SO2Percnt[i] = numDays/numDaysInMonth[i];
-                if (Constants.DEBUG)
-                    System.out.println( "Month " + i+1 + " SO2 percent: " + SO2Percnt[i]);
+                so2PercntMonthly[i].put(key, Float.valueOf(numDays / this.numDaysInMonth[i]));
             }
             map = NOXMonthly[i];
             keys = map.keySet();
@@ -318,10 +336,11 @@ public class Calculator {
                 String temp =  map.get(key);
                 String[] values = temp.split(",");
                 float numDays = Float.parseFloat(values[1]);
-                NOXPercnt[i] = numDays/numDaysInMonth[i];
-                if (Constants.DEBUG)
-                    System.out.println( "Month " + i+1 + " NOX percent: " + NOXPercnt[i]);
+                this.noxPercntMonthly[i].put(key, Float.valueOf(numDays/numDaysInMonth[i]));
             }
+
+            if (Constants.DEBUG)
+                System.out.println( "Month " + (i+1) + " NOX percent: " + NOXPercnt[i]);
         }
     }
 
@@ -372,6 +391,7 @@ public class Calculator {
             String[] values = temp.split(",");
             float mean = Float.parseFloat(values[0]) / Float.parseFloat(values[1]);
             map.replace(key, mean+"");
+
             if (Constants.DEBUG)
                 System.out.println(key + " mean: " + mean);
         }
@@ -390,7 +410,6 @@ public class Calculator {
 
             if (meanHI == null) {
                 String msg = "Warning: average heat input cannot be calculated for source (id=" + subkeys[0] + "(ORISID+BLRID)) for hour " + subkeys[2];
-                System.out.println(msg);
 
                 int index = Integer.parseInt(subkeys[2]); //It is the hour
                 int prev = 0;
@@ -463,12 +482,6 @@ public class Calculator {
             System.out.println(line);
         }
 
-        if (!hiflag && !so2flag && !noxmassflag && !noxrateflag) { // no need to replace values
-            toReturn.add(line + "\n");
-            toReturn.add(null);
-
-            return toReturn;
-        } //Everything is normal
 
         String srcHrId = t[0]+t[1]+t[3];
         String srcHrInfo = t[0] + "_" + t[1] + "_" + t[3];
@@ -494,23 +507,27 @@ public class Calculator {
 
         // get HI mean: if num of good values >= the HI threshold, use monthly average, else use annual average
         String hiMean = "";
-        if ( HIPercnt[month] >= thresholds[INX_HI]) {
-            hiMean = heatInputsMonthly[month].get(srcHrId);
+        Float exist = null;
+        exist = this.hiPercntMonthly[month].get(srcHrId);
+        if (exist != null && exist.floatValue() >= this.thresholds[this.INX_HI]) {
+
+            hiMean = this.heatInputsMonthly[month].get(srcHrId);
         } else {
-            heatInputs.get(srcHrId);
+            hiMean = heatInputs.get(srcHrId);
         }
 
-        if (hiMean == null || hiMean.equals("0") || Float.parseFloat(hiMean) == 0.0f)
-            log.append("Warning: " + infile.getName() + ": source: " + srcHrInfo + " heat input mean value: " + hiMean + "\n");
-        String head = "Replaced: " + infile.getName() + ": source: " + srcId + " date: " + t[2] + " hour: " + t[3] + " ";
-        String templog = head;
-        String hiLocal = t[10];
-        if (!isAnomalous(hiLocal, hiMean)) hiMean = hiLocal;
 
-        // get the event
+        String repModHead = srcId + "," + t[2] + "," + t[3] + ",";
+        String templog = "";
+
+        if (Constants.DEBUG) {
+            System.out.println("hiLocal: " + t[10] + " " + hiMean + "\n");
+        }
+
         CemEvent event = null;
-        if (this.eventMap != null)
+        if (this.eventMap != null) {
             event = this.eventMap.get(srcIdForPeriod);
+        }
 
         // check init
         if ( periodNOXTotalEmission == null || periodSO2TotalEmission == null //||
@@ -522,92 +539,123 @@ public class Calculator {
 
         // get NOX rate
         ConcurrentHashMap<String, String> NOXEmission = NOXMonthly[month];
-        if ( NOXPercnt[month] < thresholds[INX_NOX])
+        exist = noxPercntMonthly[month].get(srcHrId);
+        if (exist != null && exist.floatValue() < thresholds[INX_NOX])
         {
             int periodNOx = CemEvent.getPeriodIndexNOx(event, month, day);
             ConcurrentHashMap<String, String> periodNOXTotalEmission = this.periodNOXTotalEmission.get(periodNOx);
             NOXEmission = periodNOXTotalEmission;
         }
         String noxRate = NOXEmission.get(srcHrId);
-        if (noxRate == null || Float.isInfinite(Float.parseFloat(noxRate)))
-            log.append("Warning: " + infile.getName() + ": source: " + srcHrInfo + " nox emission mean value: " + noxRate + "\n");
+        if (noxRate == null || Float.isInfinite(Float.parseFloat(noxRate))) {
 
-        if ( Constants.DEBUG && noxRate == null) {
-            System.out.println("SrcHrId = \"" + srcHrId + "\"\nMap size: " + NOXEmission.size() );
-
-            printMap( NOXEmission);
+            if (Constants.DEBUG && noxRate == null) {
+                System.out.println("SrcHrId = \"" + srcHrId + "\"\nMap size: " + NOXEmission.size());
+                printMap(NOXEmission);
+            }
         }
 
         // get SO2 rate
         ConcurrentHashMap<String, String>SO2Emission = SO2Monthly[month];
-        if ( SO2Percnt[month] < thresholds[INX_SO2])
-        {
+        exist = so2PercntMonthly[month].get(srcHrId);
+        if (exist != null && exist.floatValue() < thresholds[INX_SO2]) {
+
             int periodSO2 = CemEvent.getPeriodIndexSO2(event, month, day);
             ConcurrentHashMap<String, String> periodSO2TotalEmission = this.periodSO2TotalEmission.get(periodSO2);
             SO2Emission = periodSO2TotalEmission;
         }
         String so2Rate = SO2Emission.get(srcHrId);
-        if (so2Rate == null || Float.isInfinite(Float.parseFloat(so2Rate)))
-            log.append("Warning: " + infile.getName() + ": source: " + srcHrInfo + " so2 emission mean value: " + so2Rate + "\n");
+        if (so2Rate == null || Float.isInfinite(Float.parseFloat(so2Rate))) {
 
-        // Heat Input
+            if (Constants.DEBUG && line.startsWith("3948,\"1\",\"070427\",21")) {
+                System.out.println(line);
+            }
+        }
+
+
+        boolean hiAnomalous = isAnomalous(t[10], hiMean);
+        boolean so2Anomalous = isAnomalous(t[5], so2Rate, hiMean);
+        boolean noxAnomalous = isAnomalous(t[4], noxRate, hiMean);
+        boolean anyAnomalous = hiAnomalous || so2Anomalous || noxAnomalous;
+
+
+        if (!hiflag && !so2flag && !noxmassflag && !noxrateflag) {
+            toReturn.add(line + "\n");
+            if (anyAnomalous) {
+                if (hiAnomalous)
+                    templog = templog + repModHead + "HTINPUT,Keep," + t[11] + "," + t[10] + "," + t[10] + "," + hiMean + "\n";
+                if (so2Anomalous) {
+                    String cvalue = typicalValue(so2Rate, hiMean).toString();
+                    templog = templog + repModHead + "SO2MASS,Keep," + t[12] + "," + t[5] + "," + t[5] + "," + cvalue + "\n";
+                }
+                if (noxAnomalous) {
+                    String cvalue = typicalValue(noxRate, hiMean).toString();
+                    templog = templog + repModHead + "NOXMASS,Keep," + t[13] + "," + t[4] + "," + t[4] + "," + cvalue + "\n";
+                }
+                toReturn.add(templog);
+            } else {
+                toReturn.add(null);
+            }
+            addToTotals(t[10], srcId, this.postSubHeatInputTotal);
+            addToTotals(t[5], srcId, this.postSubSO2MTotal);
+            addToTotals(t[4], srcId, this.postSubNoxMTotal);
+
+
+            return toReturn;
+        }
+
+
         String t10orig = t[10];
-        if (hiflag && !t[10].equals(NaN)) {
+
+        if (anyAnomalous && t[10] != null &&
+                isAnomalous(t[10], hiMean)) {
             t[10] = hiMean;
 
-            if (t10orig != null && !t10orig.isEmpty() && !t10orig.equals(t[10])) {
-                t[11] = MOD_FLAG;
-                templog += "HTINPUT: (original: " + t10orig + " substituted: " + t[10] + ") ";
-                incrementCount(srcId, numOfHoursHI);
-            }
-            addToTotals(t[10], srcId, postSubHeatInputTotal);
-        } else if (!t[10].equals(NaN)) {
-            addToTotals(t[10], srcId, postSubHeatInputTotal);
+            templog = repModHead + "HTINPUT,Corrected," + t[11] + "," + t10orig + "," + t[10] + "," + hiMean + "\n";
+            t[11] = MOD_FLAG;
+            incrementCount(srcId, this.numOfHoursHI);
         }
+
+        addToTotals(t[10], srcId, this.postSubHeatInputTotal);
 
         // SO2
         String t5orig = t[5];
-        if (so2flag && hiflag && !t[5].equals(NaN) && isAnomalous(t[5], so2Rate, hiMean)) {
+
+        if (anyAnomalous && t[5] != null && typicalValue(so2Rate, hiMean) != null &&
+                isAnomalous(t[5], so2Rate, hiMean)) {
             t[5] = typicalValue(so2Rate, hiMean).toString();
 
-            if (t5orig != null && !t5orig.isEmpty() && !t5orig.equals(t[5])) {
-                t[12] = MOD_FLAG;
-                templog += "SO2MASS: (original: " + t5orig + " substituted: " + t[5] + ") ";
-                incrementCount(srcId, numOfHoursSO2);
-            }
-            addToTotals(t[5], srcId, postSubSO2MTotal);
-        } else if (!t[5].equals(NaN)) {
-            addToTotals(t[5], srcId, postSubSO2MTotal);
+            templog = String.valueOf(templog) + repModHead + "SO2MASS,Corrected," + t[12] + "," + t5orig + "," + t[5] + "," + t[5] + "\n";
+            t[12] = MOD_FLAG;
+            incrementCount(srcId, this.numOfHoursSO2);
         }
+
+
+        addToTotals(t[5], srcId, this.postSubSO2MTotal);
 
         // NOx mass
         String t4orig = t[4];
-        // change to: if NEITHER of noxmass or noxrate are measured (1) AND boxmass is anomalous - do replacement
-        if ((noxmassflag && noxrateflag) && !t[4].equals(NaN) && isAnomalous(t[4], noxRate, hiMean)) {
+
+
+        if (anyAnomalous && t[4] != null && typicalValue(noxRate, hiMean) != null &&
+                isAnomalous(t[4], noxRate, hiMean)) {
+
             t[4] = typicalValue(noxRate, hiMean).toString();
 
-            if (t4orig != null && !t4orig.isEmpty() && !t4orig.equals(t[4])) {
-                t[13] = MOD_FLAG;
-                templog += "NOXMASS: (original: " + t4orig + " substituted: " + t[4] + ") ";
-                incrementCount(srcId, numOfHoursNOX);
-            }
-            addToTotals(t[4], srcId, postSubNoxMTotal);
-        } else if (!t[4].equals(NaN))
-            addToTotals(t[4], srcId, postSubNoxMTotal);
+            templog = String.valueOf(templog) + repModHead + "NOXMASS,Corrected," + t[13] + "," + t4orig + "," + t[4] + "," + t[4] + "\n";
+            t[13] = MOD_FLAG;
+            incrementCount(srcId, this.numOfHoursNOX);
+        }
+
+
+        addToTotals(t[4], srcId, this.postSubNoxMTotal);
+
 
         // NOx rate
         String t6orig = t[6];
-        // change to: if NEITHER of noxmass or noxrate are measured (1) AND boxmass is anomalous - do replacement
-        if ((noxmassflag && noxrateflag) && !t[6].equals(NaN) && isAnomalous(t[6], noxRate, hiMean)) {
-            t[6] = typicalValue(noxRate, hiMean).toString();
 
-            if (t6orig != null && !t6orig.isEmpty() && !t6orig.equals(t[6])) {
-                t[14] = MOD_FLAG;
-                templog += "NOXRATE: (original: " + t6orig + " substituted: " + t[6] + ") ";
-            }
-        }
 
-        if (templog.length() > head.length()) log.append(templog + "\n");
+        if (templog.length() > repModHead.length()) log.append(templog);
 
         toReturn.add(t[0]+",\""+t[1]+"\",\""+t[2]+"\","+t[3]+","+t[4]+","+t[5]+","+t[6]+","+t[7]+","+t[8]+","+t[9]+","+t[10]+","+t[11]+","+t[12]+","+t[13]+","+t[14]+","+t[15] + "\n"); //[0]: output line
         toReturn.add(log.toString());
@@ -635,10 +683,10 @@ public class Calculator {
         try {
             value = Float.valueOf(field);
         } catch (Exception e) {
-            return true;
+            return false;
         }
 
-        if (field.equals(NaN)) return true;
+        if (field.equals(NaN) || value.floatValue() < 0.0F) return false;
 
         if (normal == null || normal.trim().isEmpty()) return false;
 
@@ -655,10 +703,10 @@ public class Calculator {
         try {
             value = Float.valueOf(field);
         } catch (Exception e) {
-            return true;
+            return false;
         }
 
-        if (field.equals(NaN)) return true;
+        if (field.equals(NaN) || value.floatValue() < 0.0F) return false;
 
         Float normVal = typicalValue(rate, hi);
 
@@ -723,13 +771,13 @@ public class Calculator {
     }
 
     private String convert2String(Object num) {
-        if (num == null) return "";
+        if (num == null) return "0";
 
         return num.toString();
     }
 
     private String convertDiff2String(Float num1, Float num2) {
-        if (num1 == null && num2 == null) return "";
+        if (num1 == null && num2 == null) return "0.0";
         if (num1 == null && num2 != null) return -num2.floatValue() + "";
         if (num1 != null && num2 == null) return num1.toString();
 

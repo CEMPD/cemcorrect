@@ -15,15 +15,18 @@ public class CemWriter {
     private File output;
     private File summary;
     private File log;
+    private File modRep;
     private BufferedWriter writer;
     private BufferedWriter reporter;
     private BufferedWriter logger;
+    private BufferedWriter modReporter;
 
-    public CemWriter(File input, File output, File log, File sum) {
+    public CemWriter(File input, File output, File log, File sum, File modRep) {
         this.input = input;
         this.output = output;
         this.summary = sum;
         this.log = log;
+        this.modRep = modRep;
     }
 
     public void write(Calculator calc) throws IOException {
@@ -34,11 +37,13 @@ public class CemWriter {
         if (!logdir.exists()) logdir.mkdir();
 
         boolean reportExists = (summary.exists());
+        boolean repModExists = modRep.exists();
 
         BufferedReader reader = new BufferedReader(new FileReader(input));
         writer = new BufferedWriter(new FileWriter(output));
         reporter = new BufferedWriter(new FileWriter(summary, true));
         logger = new BufferedWriter(new FileWriter(log, true));
+        modReporter = new BufferedWriter(new FileWriter(modRep, true));
 
         List<String> processed = null;
         String line = null;
@@ -49,6 +54,12 @@ public class CemWriter {
 
             String wrn = calc.getWarnings();
             if (wrn != null && !wrn.isEmpty()) logger.append(wrn);
+
+            if (!repModExists) {
+                this.modReporter.write("# Type: 1. Measured, 2. calculated, 3. substituted, 4. measured/sub\n");
+
+                this.modReporter.write("Source,YYMMDD,Hour,Pollutant,Action,Type,Original(lb/hr mmBtu),Corrected,Mean\n");
+            }
 
             while ((line = reader.readLine()) != null) {
 
@@ -64,7 +75,7 @@ public class CemWriter {
                 writer.write(toOut);
 
                 if (toLog != null && !toLog.isEmpty()) {
-                    logger.append(toLog);
+                    modReporter.append(toLog);
                 }
 
                 count++;
@@ -89,6 +100,7 @@ public class CemWriter {
         writer.close();
         reporter.close();
         logger.close();
+        modReporter.close();
     }
 
     public void finalize() {

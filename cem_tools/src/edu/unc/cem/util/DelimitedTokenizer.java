@@ -7,7 +7,7 @@ import java.util.regex.Pattern;
 
 public class DelimitedTokenizer {
 
-    private Pattern p;
+    private final Pattern p;
 
     public DelimitedTokenizer(String pattern) {
         p = Pattern.compile(pattern);
@@ -20,7 +20,7 @@ public class DelimitedTokenizer {
             String token = input.substring(m.start(), m.end()).trim();
 
             if (token.length() == input.trim().length())
-                return new String[] { token };
+                return new String[]{token};
 
             if (token.startsWith("\"")) {
                 tokens.add(startWithDoubleQuote(input, m, token));

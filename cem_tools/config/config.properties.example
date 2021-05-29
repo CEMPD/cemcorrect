@@ -5,8 +5,8 @@
 #using the mix-up for least confusions.
  
 #Files & directories
-input.dir=/Users/jizhen/Documents/workspace/cem_tools/cem_tools/test/data
-output.dir=/Users/jizhen/Documents/workspace/cem_tools/cem_tools/test/output
+input.dir=/opt/cemcorrect/cem_tools/test/data
+output.dir=/opt/cemcorrect/cem_tools/test/output
 report.prefix=2007
 report.suffix=summary
 
